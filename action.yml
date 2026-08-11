@@ -1,0 +1,15 @@
+name: 'Git Mirror'
+description: 'Mirror a public or private repository. Compatible with LFS'
+author: 'Omikorin'
+branding:
+  icon: 'git-branch'
+  color: 'purple'
+
+inputs:
+  target_repo_url:
+    description: 'Target repository URL'
+    required: true
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
