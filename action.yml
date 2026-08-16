@@ -6,9 +6,33 @@ branding:
   color: 'purple'
 
 inputs:
-  target_repo_url:
-    description: 'Target repository URL'
+  target_repo:
+    description: 'Target repository URL in SSH or HTTPS format'
     required: true
+  ssh_private_key:
+    description: 'SSH private key used for connection with target repository'
+    required: false
+  git_username:
+    description: 'Username for the target repository [HTTPS only]'
+    required: false
+  git_token:
+    description: 'Personal Access Token for the target repository [HTTPS only]'
+    required: false
+  ssh_known_hosts:
+    description: 'The SSH known_hosts file contents'
+    required: false
+  ssh_no_host_key_checking:
+    description: 'Skip host key verification (sets StrictHostKeyChecking no)'
+    required: false
+    default: 'false'
+  disable_force_push:
+    description: 'Disable force push to protect the target repository'
+    required: false
+    default: 'false'
+  dry_run:
+    description: 'Test the push without actually sending data'
+    required: false
+    default: 'false'
 
 runs:
   using: 'docker'
