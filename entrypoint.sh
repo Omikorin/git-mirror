@@ -2,14 +2,17 @@
 
 set -eu
 
+SSH_PATH="$HOME/.ssh"
+
 # Guarantees cleanup of the SSH key on script exit
-trap 'echo "Cleaning up SSH keys..."; rm -rf ~/.ssh' EXIT
+trap 'echo "Cleaning up SSH keys..."; rm -rf "$SSH_PATH"' EXIT
 
 # Fix CVE-2022-24765 false positive
 git config --global --add safe.directory /github/workspace
 
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
+
+mkdir -p "$SSH_PATH"
+chmod 700 "$SSH_PATH"
 
 if [ -n "$INPUT_SSH_PRIVATE_KEY" ] && { [ -n "$INPUT_GIT_USERNAME" ] || [ -n "$INPUT_GIT_TOKEN" ]; }; then
     echo "ERROR: Option ssh_private_key is mutually exclusive with git_username and git_token"
@@ -18,21 +21,19 @@ fi
 
 if [ -n "$INPUT_SSH_PRIVATE_KEY" ]; then
     echo "Setting up SSH private key..."
-    echo "$INPUT_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-    chmod 600 ~/.ssh/id_rsa
+    echo "$INPUT_SSH_PRIVATE_KEY" > "$SSH_PATH/id_rsa"
+    chmod 600 "$SSH_PATH/id_rsa"
 
     if [ -n "$INPUT_SSH_KNOWN_HOSTS" ]; then
         echo "Setting up SSH known hosts..."
-
-        echo "$INPUT_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-        chmod 600 ~/.ssh/known_hosts
-
-        echo "StrictHostKeyChecking yes" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
+        echo "$INPUT_SSH_KNOWN_HOSTS" > "$SSH_PATH/known_hosts"
+        chmod 600 "$SSH_PATH/known_hosts"
+        
+        # Explicitly wire Git to use our exact files, bypassing any pathing ambiguity
+        git config --global core.sshCommand "ssh -i $SSH_PATH/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_PATH/known_hosts -o StrictHostKeyChecking=yes"
     else
         if [ "$INPUT_SSH_NO_HOST_KEY_CHECKING" = "true" ]; then
-            echo "StrictHostKeyChecking no" >> ~/.ssh/config
-            chmod 600 ~/.ssh/config
+            git config --global core.sshCommand "ssh -i $SSH_PATH/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
         else
             echo "ERROR: Strict host key checking is enabled but no known_hosts file was provided"
             exit 1
