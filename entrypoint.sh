@@ -89,6 +89,10 @@ setup_https() {
   # Uses an inline git credential helper that reads directly from the environment.
   # Using printf prevents formatting errors if the token contains special characters.
   # This avoids writing the token to disk or modifying the remote URL (which risks log leaks).
+
+  # shellcheck disable=SC2016
+  # We intentionally use single quotes so the variables are evaluated dynamically
+  # by Git in memory, keeping the plaintext token off the disk.
   git config --global credential.helper \
     '!f() { printf "username=%s\n" "$INPUT_GIT_USERNAME"; printf "password=%s\n" "$INPUT_GIT_TOKEN"; }; f'
 }
@@ -117,14 +121,17 @@ push_refs() {
 
   # Uses refs/remotes/origin/* because actions/checkout maps remote branches here,
   # avoiding GitHub's hidden refs/pull/* spaces.
-  REFSPEC="refs/remotes/origin/*:refs/heads/* refs/tags/*:refs/tags/*"
+  REFSPEC_BRANCHES="refs/remotes/origin/*:refs/heads/*"
+  REFSPEC_TAGS="refs/tags/*:refs/tags/*"
 
   if [ "$INPUT_DISABLE_FORCE_PUSH" = "true" ]; then
     log_info "FORCE PUSH DISABLED: Pushing branches and tags securely (with pruning)..."
-    git push "$REMOTE_NAME" $PUSH_ARGS --prune $REFSPEC
+    # shellcheck disable=SC2086
+    git push "$REMOTE_NAME" $PUSH_ARGS --prune "$REFSPEC_BRANCHES" "$REFSPEC_TAGS"
   else
     log_info "FORCE PUSH ENABLED: Performing an exact mirror..."
-    git push "$REMOTE_NAME" $PUSH_ARGS --force --prune $REFSPEC
+    # shellcheck disable=SC2086
+    git push "$REMOTE_NAME" $PUSH_ARGS --force --prune "$REFSPEC_BRANCHES" "$REFSPEC_TAGS"
   fi
 }
 
