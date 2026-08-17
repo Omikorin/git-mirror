@@ -23,15 +23,23 @@ die() {
 }
 
 cleanup() {
-  log_info "Cleaning up SSH keys..."
+  log_info "Cleaning up credentials and keys..."
   rm -rf "$SSH_PATH"
 }
 
 # ============ Core logic
 
 validate_inputs() {
-  if [ -n "${INPUT_SSH_PRIVATE_KEY:-}" ] && { [ -n "${INPUT_GIT_USERNAME:-}" ] || [ -n "${INPUT_GIT_TOKEN:-}" ]; }; then
-    die "Option ssh_private_key is mutually exclusive with git_username and git_token."
+  if [ -n "${INPUT_SSH_PRIVATE_KEY:-}" ]; then
+    # SSH mode - must NOT have HTTPS credentials
+    if [ -n "${INPUT_GIT_USERNAME:-}" ] || [ -n "${INPUT_GIT_TOKEN:-}" ]; then
+      die "Option ssh_private_key is mutually exclusive with git_username and git_token."
+    fi
+  else
+    # HTTPS mode - must have both username and token
+    if [ -z "${INPUT_GIT_USERNAME:-}" ] || [ -z "${INPUT_GIT_TOKEN:-}" ]; then
+      die "You must provide either ssh_private_key, OR both git_username and git_token for HTTPS mirroring."
+    fi
   fi
 }
 
@@ -68,6 +76,21 @@ setup_ssh() {
   else
     die "Strict host key checking is enabled but no known_hosts file was provided."
   fi
+}
+
+setup_https() {
+  # Skip if SSH key IS provided
+  if [ -n "${INPUT_SSH_PRIVATE_KEY:-}" ]; then
+    return 0
+  fi
+
+  log_info "Setting up HTTPS credentials..."
+
+  # Uses an inline git credential helper that reads directly from the environment.
+  # Using printf prevents formatting errors if the token contains special characters.
+  # This avoids writing the token to disk or modifying the remote URL (which risks log leaks).
+  git config --global credential.helper \
+    '!f() { printf "username=%s\n" "$INPUT_GIT_USERNAME"; printf "password=%s\n" "$INPUT_GIT_TOKEN"; }; f'
 }
 
 push_lfs() {
@@ -113,6 +136,7 @@ main() {
   validate_inputs
   setup_workspace
   setup_ssh
+  setup_https
   push_lfs
   push_refs
 
