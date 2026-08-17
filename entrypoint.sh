@@ -5,6 +5,9 @@ set -eu
 # Guarantees cleanup of the SSH key on script exit
 trap 'echo "Cleaning up SSH keys..."; rm -rf ~/.ssh' EXIT
 
+# Fix CVE-2022-24765 false positive
+git config --global --add safe.directory /github/workspace
+
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
