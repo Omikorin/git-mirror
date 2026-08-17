@@ -1,5 +1,5 @@
 name: 'Git Mirror'
-description: 'Mirror a public or private repository. Compatible with LFS'
+description: 'Mirror a public or private repository. Compatible with LFS.'
 author: 'Omikorin'
 branding:
   icon: 'git-branch'
