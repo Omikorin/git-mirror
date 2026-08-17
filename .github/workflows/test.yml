@@ -1,0 +1,30 @@
+name: Test Mirror
+
+on: [push]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 'mirror'
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          # lfs: true
+
+      - name: Mirror
+        uses: ./action.yml
+        with:
+          target_repo: ${{ vars.TARGET_REPO }}
+          ssh_private_key: ${{ secrets.MIRROR_SSH_KEY }}
+          ssh_known_hosts: ${{ vars.SSH_KNOWN_HOSTS }}
+          disable_force_push: 'true'
+          dry_run: 'false'
