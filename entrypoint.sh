@@ -37,7 +37,7 @@ if [ -n "$INPUT_SSH_PRIVATE_KEY" ]; then
     fi
 fi
 
-git remote add mirror "$INPUT_TARGET_REPO_URL"
+git remote add mirror "$INPUT_TARGET_REPO"
 
 PUSH_ARGS=""
 
