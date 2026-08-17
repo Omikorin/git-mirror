@@ -1,0 +1,29 @@
+minimum_prek_version = "0.4.14"
+
+exclude = { glob = ["LICENSE", "mise.lock"] }
+
+[update]
+cooldown_days = 7
+freeze = true
+include_tags = "v*"
+exclude_tags = ["*-{alpha,beta,rc}*"]
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "check-merge-conflict" },
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "mixed-line-ending" },
+  # { id = "check-json" },
+  # { id = "check-json5" },
+  { id = "check-toml" },
+  { id = "check-yaml" },
+]
+
+[[repos]]
+repo = "https://github.com/shellcheck-py/shellcheck-py"
+rev = "745eface02aef23e168a8afb6b5737818efbea95"  # frozen: v0.11.0.1
+hooks = [
+  { id = "shellcheck" },
+]
