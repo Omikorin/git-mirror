@@ -1,6 +1,6 @@
 name: Test Mirror
 
-on: [push]
+on: [push, delete]
 
 permissions:
   contents: read
