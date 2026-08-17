@@ -21,10 +21,10 @@ inputs:
   ssh_known_hosts:
     description: 'The SSH known_hosts file contents'
     required: false
-  ssh_no_host_key_checking:
-    description: 'Skip host key verification (sets StrictHostKeyChecking no)'
+  ssh_strict_host_key_checking:
+    description: 'Set strict SSH host key verification (true by default)'
     required: false
-    default: 'false'
+    default: 'true'
   disable_force_push:
     description: 'Disable force push to protect the target repository'
     required: false

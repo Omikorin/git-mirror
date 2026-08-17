@@ -32,7 +32,7 @@ if [ -n "$INPUT_SSH_PRIVATE_KEY" ]; then
         # Explicitly wire Git to use our exact files, bypassing any pathing ambiguity
         git config --global core.sshCommand "ssh -i $SSH_PATH/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_PATH/known_hosts -o StrictHostKeyChecking=yes"
     else
-        if [ "$INPUT_SSH_NO_HOST_KEY_CHECKING" = "true" ]; then
+        if [ "$INPUT_SSH_STRICT_HOST_KEY_CHECKING" = "false" ]; then
             git config --global core.sshCommand "ssh -i $SSH_PATH/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
         else
             echo "ERROR: Strict host key checking is enabled but no known_hosts file was provided"
