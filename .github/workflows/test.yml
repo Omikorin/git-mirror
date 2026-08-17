@@ -21,7 +21,7 @@ jobs:
           # lfs: true
 
       - name: Mirror
-        uses: ./action.yml
+        uses: ./
         with:
           target_repo: ${{ vars.TARGET_REPO }}
           ssh_private_key: ${{ secrets.MIRROR_SSH_KEY }}
