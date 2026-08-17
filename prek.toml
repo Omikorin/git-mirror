@@ -5,8 +5,9 @@ exclude = { glob = ["LICENSE", "mise.lock"] }
 [update]
 cooldown_days = 7
 freeze = true
-# include_tags = "v*"
+include_tags = "v*"
 exclude_tags = ["*-{alpha,beta,rc}*"]
+repos = { "https://github.com/python-jsonschema/check-jsonschema" = { include_tags = "*" } }
 
 [[repos]]
 repo = "builtin"
