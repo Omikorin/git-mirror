@@ -1,4 +1,4 @@
-name: Test Mirror
+name: Mirror
 
 on: [push, delete]
 
@@ -6,8 +6,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: 'mirror'
-  cancel-in-progress: false
+  group: mirror
+  cancel-in-progress: true
 
 jobs:
   mirror:
