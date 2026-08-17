@@ -2,74 +2,121 @@
 
 set -eu
 
+# ============ Constants
+
 SSH_PATH="$HOME/.ssh"
+REMOTE_NAME="mirror"
 
-# Guarantees cleanup of the SSH key on script exit
-trap 'echo "Cleaning up SSH keys..."; rm -rf "$SSH_PATH"' EXIT
+# ============ Helpers
 
-# Fix CVE-2022-24765 false positive
-git config --global --add safe.directory /github/workspace
+log_info() {
+  echo "INFO: $1"
+}
 
-mkdir -p "$SSH_PATH"
-chmod 700 "$SSH_PATH"
+log_error() {
+  echo "ERROR: $1" >&2
+}
 
-if [ -n "$INPUT_SSH_PRIVATE_KEY" ] && { [ -n "$INPUT_GIT_USERNAME" ] || [ -n "$INPUT_GIT_TOKEN" ]; }; then
-  echo "ERROR: Option ssh_private_key is mutually exclusive with git_username and git_token"
+die() {
+  log_error "$1"
   exit 1
-fi
+}
 
-if [ -n "$INPUT_SSH_PRIVATE_KEY" ]; then
-  echo "Setting up SSH private key..."
-  echo "$INPUT_SSH_PRIVATE_KEY" >"$SSH_PATH/id_rsa"
-  chmod 600 "$SSH_PATH/id_rsa"
+cleanup() {
+  log_info "Cleaning up SSH keys..."
+  rm -rf "$SSH_PATH"
+}
 
-  if [ -n "$INPUT_SSH_KNOWN_HOSTS" ]; then
-    echo "Setting up SSH known hosts..."
+# ============ Core logic
+
+validate_inputs() {
+  if [ -n "${INPUT_SSH_PRIVATE_KEY:-}" ] && { [ -n "${INPUT_GIT_USERNAME:-}" ] || [ -n "${INPUT_GIT_TOKEN:-}" ]; }; then
+    die "Option ssh_private_key is mutually exclusive with git_username and git_token."
+  fi
+}
+
+setup_workspace() {
+  # Fix CVE-2022-24765 false positive for GitHub Actions runner
+  git config --global --add safe.directory /github/workspace
+  git remote add "$REMOTE_NAME" "$INPUT_TARGET_REPO"
+}
+
+setup_ssh() {
+  # Skip if no SSH key is provided
+  if [ -z "${INPUT_SSH_PRIVATE_KEY:-}" ]; then
+    return 0
+  fi
+
+  log_info "Setting up SSH private key..."
+  mkdir -p "$SSH_PATH"
+  chmod 700 "$SSH_PATH"
+
+  echo "$INPUT_SSH_PRIVATE_KEY" >"$SSH_PATH/id_ed25519"
+  chmod 600 "$SSH_PATH/id_ed25519"
+
+  if [ -n "${INPUT_SSH_KNOWN_HOSTS:-}" ]; then
+    log_info "Setting up SSH known hosts..."
     echo "$INPUT_SSH_KNOWN_HOSTS" >"$SSH_PATH/known_hosts"
     chmod 600 "$SSH_PATH/known_hosts"
 
-    # Explicitly wire Git to use our exact files, bypassing any pathing ambiguity
-    git config --global core.sshCommand "ssh -i $SSH_PATH/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_PATH/known_hosts -o StrictHostKeyChecking=yes"
+    git config --global core.sshCommand "ssh -i $SSH_PATH/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_PATH/known_hosts -o StrictHostKeyChecking=yes"
+
+  elif [ "${INPUT_SSH_STRICT_HOST_KEY_CHECKING:-}" = "false" ]; then
+    log_info "Strict host key checking disabled (Warning: less secure)."
+    git config --global core.sshCommand "ssh -i $SSH_PATH/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
   else
-    if [ "$INPUT_SSH_STRICT_HOST_KEY_CHECKING" = "false" ]; then
-      git config --global core.sshCommand "ssh -i $SSH_PATH/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-    else
-      echo "ERROR: Strict host key checking is enabled but no known_hosts file was provided"
-      exit 1
-    fi
+    die "Strict host key checking is enabled but no known_hosts file was provided."
   fi
-fi
+}
 
-git remote add mirror "$INPUT_TARGET_REPO"
+push_lfs() {
+  if ! git lfs ls-files 2>/dev/null | grep -q .; then
+    log_info "No LFS files detected, skipping LFS phase."
+    return 0
+  fi
 
-PUSH_ARGS=""
-
-if [ "$INPUT_DRY_RUN" = "true" ]; then
-  echo "DRY RUN ENABLED: No data will actually be pushed."
-  PUSH_ARGS="--dry-run"
-fi
-
-if git lfs ls-files 2>/dev/null | grep -q .; then
-  if [ "$INPUT_DRY_RUN" != "true" ]; then
-    echo "Pushing LFS objects to mirror..."
-    git lfs push mirror --all
+  if [ "$INPUT_DRY_RUN" = "true" ]; then
+    log_info "Dry run enabled: Skipping LFS push."
   else
-    echo "Dry run enabled: Skipping LFS push."
+    log_info "Pushing LFS objects to mirror..."
+    git lfs push "$REMOTE_NAME" --all
   fi
-else
-  echo "No LFS files detected, skipping LFS phase."
-fi
+}
 
-# This uses refs/remotes/origin/* because actions/checkout maps remote branches here,
-# not to local refs/heads/. This avoids pushing GitHub's hidden refs/pull/* spaces.
-REFSPEC="refs/remotes/origin/*:refs/heads/* refs/tags/*:refs/tags/*"
+push_refs() {
+  PUSH_ARGS=""
 
-if [ "$INPUT_DISABLE_FORCE_PUSH" = "true" ]; then
-  echo "FORCE PUSH DISABLED: Pushing branches and tags securely..."
-  git push mirror $PUSH_ARGS --prune $REFSPEC
-else
-  echo "FORCE PUSH ENABLED: Performing an exact mirror..."
-  git push mirror $PUSH_ARGS --force --prune $REFSPEC
-fi
+  if [ "$INPUT_DRY_RUN" = "true" ]; then
+    log_info "DRY RUN ENABLED: No data will actually be pushed."
+    PUSH_ARGS="--dry-run"
+  fi
 
-echo "Mirror completed successfully."
+  # Uses refs/remotes/origin/* because actions/checkout maps remote branches here,
+  # avoiding GitHub's hidden refs/pull/* spaces.
+  REFSPEC="refs/remotes/origin/*:refs/heads/* refs/tags/*:refs/tags/*"
+
+  if [ "$INPUT_DISABLE_FORCE_PUSH" = "true" ]; then
+    log_info "FORCE PUSH DISABLED: Pushing branches and tags securely (with pruning)..."
+    git push "$REMOTE_NAME" $PUSH_ARGS --prune $REFSPEC
+  else
+    log_info "FORCE PUSH ENABLED: Performing an exact mirror..."
+    git push "$REMOTE_NAME" $PUSH_ARGS --force --prune $REFSPEC
+  fi
+}
+
+# ============ Main
+
+main() {
+  trap cleanup EXIT
+
+  validate_inputs
+  setup_workspace
+  setup_ssh
+  push_lfs
+  push_refs
+
+  log_info "Mirror completed successfully."
+}
+
+main
