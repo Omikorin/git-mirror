@@ -57,12 +57,16 @@ else
     echo "No LFS files detected, skipping LFS phase."
 fi
 
+# This uses refs/remotes/origin/* because actions/checkout maps remote branches here, 
+# not to local refs/heads/. This avoids pushing GitHub's hidden refs/pull/* spaces.
+REFSPEC="refs/remotes/origin/*:refs/heads/* refs/tags/*:refs/tags/*"
+
 if [ "$INPUT_DISABLE_FORCE_PUSH" = "true" ]; then
-    echo "FORCE PUSH DISABLED: Pushing refs/heads and refs/tags securely..."
-    git push mirror $PUSH_ARGS "refs/heads/*:refs/heads/*" "refs/tags/*:refs/tags/*"
+    echo "FORCE PUSH DISABLED: Pushing branches and tags securely..."
+    git push mirror $PUSH_ARGS --prune $REFSPEC
 else
     echo "FORCE PUSH ENABLED: Performing an exact mirror..."
-    git push mirror $PUSH_ARGS --mirror
+    git push mirror $PUSH_ARGS --force --prune $REFSPEC
 fi
 
 echo "Mirror completed successfully."
