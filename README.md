@@ -80,14 +80,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-          # lfs: true # Uncomment if repository uses LFS
+          # Uncomment lfs: true if your repository contains LFS objects. 
+          # Otherwise, the action will only push the LFS pointer files.
+          # lfs: true
 
       - uses: Omikorin/git-mirror@v1
         with:
           target_repo: ${{ vars.TARGET_REPO }}
           ssh_private_key: ${{ secrets.MIRROR_SSH_KEY }}
           ssh_known_hosts: ${{ vars.SSH_KNOWN_HOSTS }}
-          # disable_force_push: 'true' # Uncomment if you wish to mirror safely
+          # Uncomment if you wish to mirror safely
+          # disable_force_push: 'true'
 ```
 
 Then, set up the following Actions variables:

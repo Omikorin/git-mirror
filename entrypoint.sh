@@ -4,8 +4,14 @@ set -eu
 
 # ============ Constants
 
-SSH_PATH="$HOME/.ssh"
+# Use a secure temporary directory instead of risking user's $HOME/.ssh
+SSH_PATH="$(mktemp -d)"
 REMOTE_NAME="mirror"
+
+# Normalize inputs
+OPT_DRY_RUN=$(echo "${INPUT_DRY_RUN:-false}" | tr '[:upper:]' '[:lower:]')
+OPT_DISABLE_FORCE_PUSH=$(echo "${INPUT_DISABLE_FORCE_PUSH:-false}" | tr '[:upper:]' '[:lower:]')
+OPT_STRICT_HOST_KEY_CHECKING=$(echo "${INPUT_SSH_STRICT_HOST_KEY_CHECKING:-true}" | tr '[:upper:]' '[:lower:]')
 
 # ============ Helpers
 
@@ -46,6 +52,9 @@ validate_inputs() {
 setup_workspace() {
   # Fix CVE-2022-24765 false positive for GitHub Actions runner
   git config --global --add safe.directory /github/workspace
+
+  # Ensure idempotency in case of local testing or container reuse
+  git remote remove "$REMOTE_NAME" 2>/dev/null || true
   git remote add "$REMOTE_NAME" "$INPUT_TARGET_REPO"
 }
 
@@ -56,7 +65,6 @@ setup_ssh() {
   fi
 
   log_info "Setting up SSH private key..."
-  mkdir -p "$SSH_PATH"
   chmod 700 "$SSH_PATH"
 
   echo "$INPUT_SSH_PRIVATE_KEY" >"$SSH_PATH/id_ed25519"
@@ -67,11 +75,11 @@ setup_ssh() {
     echo "$INPUT_SSH_KNOWN_HOSTS" >"$SSH_PATH/known_hosts"
     chmod 600 "$SSH_PATH/known_hosts"
 
-    git config --global core.sshCommand "ssh -i $SSH_PATH/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_PATH/known_hosts -o StrictHostKeyChecking=yes"
+    export GIT_SSH_COMMAND="ssh -i $SSH_PATH/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_PATH/known_hosts -o StrictHostKeyChecking=yes"
 
-  elif [ "${INPUT_SSH_STRICT_HOST_KEY_CHECKING:-}" = "false" ]; then
+  elif [ "$OPT_STRICT_HOST_KEY_CHECKING" = "false" ]; then
     log_info "Strict host key checking disabled (Warning: less secure)."
-    git config --global core.sshCommand "ssh -i $SSH_PATH/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+    export GIT_SSH_COMMAND="ssh -i $SSH_PATH/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
   else
     die "Strict host key checking is enabled but no known_hosts file was provided."
@@ -86,14 +94,11 @@ setup_https() {
 
   log_info "Setting up HTTPS credentials..."
 
-  # Uses an inline git credential helper that reads directly from the environment.
-  # Using printf prevents formatting errors if the token contains special characters.
-  # This avoids writing the token to disk or modifying the remote URL (which risks log leaks).
-
+  # Use --local to keep credentials scoped to the repo
   # shellcheck disable=SC2016
   # We intentionally use single quotes so the variables are evaluated dynamically
   # by Git in memory, keeping the plaintext token off the disk.
-  git config --global credential.helper \
+  git config --local credential.helper \
     '!f() { printf "username=%s\n" "$INPUT_GIT_USERNAME"; printf "password=%s\n" "$INPUT_GIT_TOKEN"; }; f'
 }
 
@@ -103,7 +108,7 @@ push_lfs() {
     return 0
   fi
 
-  if [ "$INPUT_DRY_RUN" = "true" ]; then
+  if [ "$OPT_DRY_RUN" = "true" ]; then
     log_info "Dry run enabled: Skipping LFS push."
   else
     log_info "Pushing LFS objects to mirror..."
@@ -114,7 +119,7 @@ push_lfs() {
 push_refs() {
   PUSH_ARGS=""
 
-  if [ "$INPUT_DRY_RUN" = "true" ]; then
+  if [ "$OPT_DRY_RUN" = "true" ]; then
     log_info "DRY RUN ENABLED: No data will actually be pushed."
     PUSH_ARGS="--dry-run"
   fi
@@ -124,7 +129,7 @@ push_refs() {
   REFSPEC_BRANCHES="refs/remotes/origin/*:refs/heads/*"
   REFSPEC_TAGS="refs/tags/*:refs/tags/*"
 
-  if [ "$INPUT_DISABLE_FORCE_PUSH" = "true" ]; then
+  if [ "$OPT_DISABLE_FORCE_PUSH" = "true" ]; then
     log_info "FORCE PUSH DISABLED: Pushing branches and tags securely (with pruning)..."
     # shellcheck disable=SC2086
     git push "$REMOTE_NAME" $PUSH_ARGS --prune "$REFSPEC_BRANCHES" "$REFSPEC_TAGS"
