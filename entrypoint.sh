@@ -30,7 +30,9 @@ die() {
 
 cleanup() {
   log_info "Cleaning up credentials and keys..."
-  rm -rf "$SSH_PATH"
+  if [ -n "${SSH_PATH:-}" ] && [ -d "$SSH_PATH" ]; then
+    rm -rf "$SSH_PATH"
+  fi
 }
 
 # ============ Core logic
@@ -51,7 +53,7 @@ validate_inputs() {
 
 setup_workspace() {
   # Fix CVE-2022-24765 false positive for GitHub Actions runner
-  git config --global --add safe.directory /github/workspace
+  git config --global --add safe.directory '*'
 
   # Ensure idempotency in case of local testing or container reuse
   git remote remove "$REMOTE_NAME" 2>/dev/null || true
@@ -67,12 +69,12 @@ setup_ssh() {
   log_info "Setting up SSH private key..."
   chmod 700 "$SSH_PATH"
 
-  echo "$INPUT_SSH_PRIVATE_KEY" >"$SSH_PATH/id_ed25519"
+  printf "%s\n" "$INPUT_SSH_PRIVATE_KEY" >"$SSH_PATH/id_ed25519"
   chmod 600 "$SSH_PATH/id_ed25519"
 
   if [ -n "${INPUT_SSH_KNOWN_HOSTS:-}" ]; then
     log_info "Setting up SSH known hosts..."
-    echo "$INPUT_SSH_KNOWN_HOSTS" >"$SSH_PATH/known_hosts"
+    printf "%s\n" "$INPUT_SSH_KNOWN_HOSTS" >"$SSH_PATH/known_hosts"
     chmod 600 "$SSH_PATH/known_hosts"
 
     export GIT_SSH_COMMAND="ssh -i $SSH_PATH/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_PATH/known_hosts -o StrictHostKeyChecking=yes"
