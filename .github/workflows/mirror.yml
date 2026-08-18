@@ -32,4 +32,5 @@ jobs:
           target_repo: 'git@${{ matrix.target_host }}:${{ github.repository }}.git'
           ssh_private_key: ${{ secrets.MIRROR_SSH_KEY }}
           ssh_known_hosts: ${{ vars.SSH_KNOWN_HOSTS }}
-          disable_force_push: 'true'
+          # Force push is needed for replacing general (v1) tags in actions
+          # disable_force_push: 'true'
