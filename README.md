@@ -63,7 +63,10 @@ Create a workflow file (i.e. `.github/workflows/mirror.yml`) in your source repo
 ```yaml
 name: Mirror
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read # mirroring does not need write access on the source
