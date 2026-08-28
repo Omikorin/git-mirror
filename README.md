@@ -122,8 +122,8 @@ Also, set up secrets:
 
 ### Requirements
 
-- mise 2026.8.8+
-- prek 0.4.14+
+- mise 2026.8.14+
+- prek 0.5.0+
 
 ### Setup tooling
 
