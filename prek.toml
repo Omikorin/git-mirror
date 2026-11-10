@@ -24,7 +24,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/python-jsonschema/check-jsonschema"
-rev = "12e63946db2c5cfcc9030fac21c3883ba88c6ed8"  # frozen: 0.38.0
+rev = "a76b92851fc9eede9f9bc4073eb55202f34eb0df"  # frozen: 0.39.0
 hooks = [
   { id = "check-github-actions" },
   { id = "check-github-workflows" },
@@ -34,7 +34,7 @@ hooks = [
 # zizmor detects security vulnerabilities in GitHub Actions workflows
 [[repos]]
 repo = "https://github.com/zizmorcore/zizmor-pre-commit"
-rev = "451b56af716f9f0d0c2b816503a3fd0cf8b036fa"  # frozen: v1.29.0
+rev = "06a39750ec31860bb44f2acf67182c40016cd1e7"  # frozen: v1.32.0
 hooks = [
   { id = "zizmor", args = ["--no-progress", "--fix"] },
 ]
