@@ -160,6 +160,14 @@ prek
 prek --all-files
 ```
 
+### Local behavior tests
+
+The entrypoint tests stub Git push operations, so they run without network access or a mirror repository:
+
+```shell
+mise run test
+```
+
 ## License
 
 This project is licensed under the terms of the [ISC License](https://github.com/Omikorin/git-mirror/blob/main/LICENSE).
