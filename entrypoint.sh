@@ -127,16 +127,39 @@ push_refs() {
   fi
 
   # Uses refs/remotes/origin/* because actions/checkout maps remote branches here,
-  # avoiding GitHub's hidden refs/pull/* spaces.
+  # Branches do not have the '+' prefix, so they will reject rewinds unless --force is used
   REFSPEC_BRANCHES="refs/remotes/origin/*:refs/heads/*"
-  REFSPEC_TAGS="refs/tags/*:refs/tags/*"
 
   if [ "$OPT_DISABLE_FORCE_PUSH" = "true" ]; then
-    log_info "FORCE PUSH DISABLED: Pushing branches and tags securely (with pruning)..."
+    SOURCE_BRANCH="${INPUT_BRANCH:-}"
+    if [ -z "$SOURCE_BRANCH" ]; then
+      SOURCE_BRANCH="${GITHUB_REF_NAME:-}"
+      if [ "${GITHUB_REF_TYPE:-branch}" != "branch" ] || [ -z "$SOURCE_BRANCH" ]; then
+        die "Force-push-disabled mode requires a branch-triggered workflow or an explicit branch input."
+      fi
+    fi
+
+    if ! git check-ref-format "refs/heads/$SOURCE_BRANCH"; then
+      die "Invalid branch name '$SOURCE_BRANCH'."
+    fi
+
+    REFSPEC_BRANCHES="refs/remotes/origin/$SOURCE_BRANCH:refs/heads/$SOURCE_BRANCH"
+    if ! git show-ref --verify --quiet "refs/remotes/origin/$SOURCE_BRANCH"; then
+      die "Source branch '$SOURCE_BRANCH' was not found in refs/remotes/origin."
+    fi
+
+    log_info "FORCE PUSH DISABLED: Pushing workflow branch securely and tags forcefully..."
+
+    # The '+' forces tag updates (like floating v1, v2) safely
+    REFSPEC_TAGS="+refs/tags/*:refs/tags/*"
+
     # shellcheck disable=SC2086
-    git push "$REMOTE_NAME" $PUSH_ARGS --prune "$REFSPEC_BRANCHES" "$REFSPEC_TAGS"
+    git push "$REMOTE_NAME" $PUSH_ARGS "$REFSPEC_BRANCHES" "$REFSPEC_TAGS"
   else
     log_info "FORCE PUSH ENABLED: Performing an exact mirror..."
+
+    REFSPEC_TAGS="refs/tags/*:refs/tags/*"
+
     # shellcheck disable=SC2086
     git push "$REMOTE_NAME" $PUSH_ARGS --force --prune "$REFSPEC_BRANCHES" "$REFSPEC_TAGS"
   fi

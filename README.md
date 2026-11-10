@@ -43,9 +43,15 @@ It supports HTTPS, SSH, and LFS. Addtionally, the LFS protocol is detected autom
     # Default: true
     ssh_strict_host_key_checking: ''
 
-    # Disable force push to protect the target repository
+    # Push only the workflow branch without force
+    # Other target branches are left untouched
+    # Tags are still force-pushed
     # Default: false
     disable_force_push: ''
+
+    # Branch to push in safe mode
+    # Defaults to the branch that triggered the workflow
+    branch: ''
 
     # Test the push without actually sending data
     # Default: false
@@ -83,7 +89,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-          # Uncomment lfs: true if your repository contains LFS objects. 
+          # Uncomment lfs: true if your repository contains LFS objects.
           # Otherwise, the action will only push the LFS pointer files.
           # lfs: true
 

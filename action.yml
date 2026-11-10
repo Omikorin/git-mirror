@@ -26,9 +26,12 @@ inputs:
     required: false
     default: 'true'
   disable_force_push:
-    description: 'Disable force push to protect the target repository'
+    description: 'Push only the workflow branch without force, leaving other target branches untouched (tags are still force-pushed)'
     required: false
     default: 'false'
+  branch:
+    description: 'Branch to push in safe mode; defaults to the branch that triggered the workflow'
+    required: false
   dry_run:
     description: 'Test the push without actually sending data'
     required: false
