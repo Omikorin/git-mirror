@@ -131,8 +131,8 @@ Add this as an environment secret in **Settings > Environments > mirror**:
 
 ### Requirements
 
-- mise 2026.8.14+
-- prek 0.5.0+
+- mise
+- prek
 
 ### Setup tooling
 
