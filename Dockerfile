@@ -13,9 +13,16 @@ LABEL com.github.actions.name="Git Mirror" \
 
 RUN apk update && apk upgrade && \
     apk add --no-cache git git-lfs openssh && \
-    git lfs install
+    git lfs install && \
+    addgroup -S -g 1001 gitmirror && \
+    adduser -S -D -H -u 1001 -G gitmirror gitmirror
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod 0755 /entrypoint.sh
+
+ENV HOME=/home/gitmirror \
+    TMPDIR=/tmp
+
+USER gitmirror
 
 ENTRYPOINT ["/entrypoint.sh"]
