@@ -24,7 +24,8 @@ log_error() {
 }
 
 die() {
-  log_error "$1"
+  error_msg="$1"
+  log_error "$error_msg"
   exit 1
 }
 

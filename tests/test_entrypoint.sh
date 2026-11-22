@@ -36,35 +36,45 @@ EOF
 chmod +x "$FAKE_BIN/git"
 
 fail() {
-  printf 'FAIL: %s\n' "$1" >&2
+  fail_msg="$1"
+  printf 'FAIL: %s\n' "$fail_msg" >&2
   exit 1
 }
 
 assert_has() {
-  grep -F -x -e "$1" "$PUSH_LOG" >/dev/null || fail "push args missing: $1"
+  assert_arg="$1"
+  grep -F -x -e "$assert_arg" "$PUSH_LOG" >/dev/null || fail "push args missing: $assert_arg"
 }
 
 assert_lacks() {
-  if grep -F -x -e "$1" "$PUSH_LOG" >/dev/null; then
-    fail "unexpected push arg: $1"
+  assert_arg="$1"
+  if grep -F -x -e "$assert_arg" "$PUSH_LOG" >/dev/null; then
+    fail "unexpected push arg: $assert_arg"
   fi
 }
 
 run_action() {
+  disable_force_push="$1"
+  branch="$2"
+  dry_run="$3"
+  github_ref_name="$4"
+  github_ref_type="$5"
+  ref_exists="$6"
+
   : >"$PUSH_LOG"
   env \
     "PATH=$FAKE_BIN:$PATH" \
     "REAL_GIT=$REAL_GIT" \
     "GIT_PUSH_LOG=$PUSH_LOG" \
-    "TEST_REF_EXISTS=$6" \
+    "TEST_REF_EXISTS=$ref_exists" \
     INPUT_TARGET_REPO=local-test-target \
     INPUT_GIT_USERNAME=test-user \
     INPUT_GIT_TOKEN=test-token \
-    "INPUT_DISABLE_FORCE_PUSH=$1" \
-    "INPUT_BRANCH=$2" \
-    "INPUT_DRY_RUN=$3" \
-    "GITHUB_REF_NAME=$4" \
-    "GITHUB_REF_TYPE=$5" \
+    "INPUT_DISABLE_FORCE_PUSH=$disable_force_push" \
+    "INPUT_BRANCH=$branch" \
+    "INPUT_DRY_RUN=$dry_run" \
+    "GITHUB_REF_NAME=$github_ref_name" \
+    "GITHUB_REF_TYPE=$github_ref_type" \
     sh "$ROOT_DIR/entrypoint.sh" >/dev/null
 }
 
